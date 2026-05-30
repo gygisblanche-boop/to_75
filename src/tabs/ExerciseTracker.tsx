@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import type { Exercise } from '../context/AppContext';
-import CircularProgress from '../components/CircularProgress';
-import QuickLogModal from '../components/QuickLogModal';
+import { useApp } from '@/context/AppContext';
+import type { Exercise } from '@/context/AppContext';
+import CircularProgress from '@/components/CircularProgress';
+import QuickLogModal from '@/components/QuickLogModal';
 import { Dumbbell, Plus, Trash2, Award } from 'lucide-react';
 
 export const ExerciseTracker: React.FC = () => {

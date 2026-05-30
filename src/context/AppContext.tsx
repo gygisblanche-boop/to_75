@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, isSupabaseEnabled } from '../supabase';
+import { supabase, isSupabaseEnabled } from '@/supabase';
 import type { User } from '@supabase/supabase-js';
 
 // Local storage keys for Demo Mode

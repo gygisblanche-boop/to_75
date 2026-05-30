@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { isSupabaseEnabled } from '../supabase';
+import { useApp } from '@/context/AppContext';
+import { isSupabaseEnabled } from '@/supabase';
 import { Zap, Eye, EyeOff, AlertTriangle, ShieldCheck, Mail, Lock } from 'lucide-react';
 
 export const AuthScreen: React.FC = () => {

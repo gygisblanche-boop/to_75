@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Exercise } from '../context/AppContext';
+import type { Exercise } from '@/context/AppContext';
 import { Dumbbell, Plus, X } from 'lucide-react';
 
 interface QuickLogModalProps {

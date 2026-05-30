@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { ListTodo, Plus, Trash2, CheckCircle, Circle, Archive, RefreshCw } from 'lucide-react';
 
 export const TodoList: React.FC = () => {

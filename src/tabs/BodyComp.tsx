@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { Activity, Scale, Dumbbell, Moon, Heart, RefreshCw, Smartphone, Award } from 'lucide-react';
 
 export const BodyComp: React.FC = () => {

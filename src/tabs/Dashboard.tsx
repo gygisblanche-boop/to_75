@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import CircularProgress from '../components/CircularProgress';
-import GeminiCoach from '../components/GeminiCoach';
-import BadgesDrawer from '../components/BadgesDrawer';
+import { useApp } from '@/context/AppContext';
+import CircularProgress from '@/components/CircularProgress';
+import GeminiCoach from '@/components/GeminiCoach';
+import BadgesDrawer from '@/components/BadgesDrawer';
 import { Trophy, TrendingDown, User, Edit3, Award } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {

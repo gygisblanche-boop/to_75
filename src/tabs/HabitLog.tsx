@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import type { HabitKeys } from '../context/AppContext';
+import { useApp } from '@/context/AppContext';
+import type { HabitKeys } from '@/context/AppContext';
 import { Flame, Check, Sparkles, Upload, FileText } from 'lucide-react';
 
 export const HabitLog: React.FC = () => {

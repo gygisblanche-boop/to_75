@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import type { UserProfile } from '../context/AppContext';
+import { useApp } from '@/context/AppContext';
+import type { UserProfile } from '@/context/AppContext';
 import { Zap, Award } from 'lucide-react';
 
 export const Onboarding: React.FC = () => {
