@@ -792,6 +792,32 @@ export const BodyComp: React.FC = () => {
                 </div>
               </div>
             )}
+            
+            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Are you sure you want to clear all generated AI avatars?")) {
+                    setAiPreviews({});
+                    localStorage.removeItem('myjourney_ai_previews_v1');
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '0.74rem',
+                  borderColor: '#ff4d4d',
+                  color: '#ff4d4d',
+                  width: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Trash2 size={12} />
+                Clear All AI Previews
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -967,7 +993,39 @@ export const BodyComp: React.FC = () => {
                         src={aiPhoto} 
                         alt="AI avatar visualization" 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          console.warn("AI preview image failed to load:", aiPhoto);
+                        }}
                       />
+                      {/* Delete / Regenerate Specific card */}
+                      <button
+                        onClick={() => {
+                          const updated = { ...aiPreviews };
+                          delete updated[card.key];
+                          setAiPreviews(updated);
+                          localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '38px',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(0,0,0,0.6)',
+                          border: 'none',
+                          color: '#ff4d4d',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                        title="Delete / Regenerate Avatar"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                       <button
                         onClick={() => {
                           setActiveZoomUrl(aiPhoto);
