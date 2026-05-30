@@ -294,31 +294,19 @@ export const BodyComp: React.FC = () => {
         setAiPreviews(updated);
         localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
       } else {
-        // --- Pollinations sequential fetch/data URL conversion ---
+        // --- Pollinations direct URL assignment ---
+        // Note: We assign the URL directly instead of doing fetch() because Pollinations AI blocks 
+        // fetch requests from other origins (like localhost) with a 403 Turnstile challenge.
+        // Direct <img> tag loads do not send the Origin header and are allowed.
         const encodedPrompt = encodeURIComponent(promptText);
         const seed = Math.floor(Math.random() * 1000000);
         const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${seed}`;
         
-        const response = await fetch(url);
-        if (!response.ok) {
-          if (response.status === 402) {
-            throw new Error("Queue Full / Payment Required. Try again in a few seconds or use a Gemini API key.");
-          }
-          throw new Error(`Pollinations API returned status: ${response.status} (${response.statusText})`);
-        }
+        // Simulate a 2-second pipeline connection delay so the loader is visible
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        const blob = await response.blob();
-        
-        // Convert blob to base64 Data URL
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Failed to read image blob data."));
-          reader.readAsDataURL(blob);
-        });
-        
-        // Cache the preview dataURL
-        const updated = { ...aiPreviews, [key]: base64Data };
+        // Cache the preview URL
+        const updated = { ...aiPreviews, [key]: url };
         setAiPreviews(updated);
         localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
       }
