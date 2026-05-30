@@ -17,7 +17,12 @@ import {
   UserCheck,
   TrendingDown,
   ChevronRight,
-  Maximize2
+  Maximize2,
+  Settings,
+  Key,
+  Lock,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export const BodyComp: React.FC = () => {
@@ -49,6 +54,60 @@ export const BodyComp: React.FC = () => {
   const [genderModel, setGenderModel] = useState<'male' | 'female'>('male');
   const [activeZoomUrl, setActiveZoomUrl] = useState<string | null>(null);
   const [activeZoomLabel, setActiveZoomLabel] = useState<string>('');
+
+  // AI Generation configuration states
+  const [useGemini, setUseGemini] = useState<boolean>(() => {
+    try {
+      const cached = localStorage.getItem('myjourney_use_gemini');
+      return cached ? JSON.parse(cached) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('myjourney_gemini_api_key');
+      if (cached) return cached;
+    } catch {}
+    return (import.meta.env.VITE_GEMINI_API_KEY as string) || (import.meta.env.VITE_GOOGLE_API_KEY as string) || '';
+  });
+
+  const [geminiModel, setGeminiModel] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('myjourney_gemini_model');
+      return cached || 'gemini-3.1-flash-image';
+    } catch {
+      return 'gemini-3.1-flash-image';
+    }
+  });
+
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('myjourney_use_gemini', JSON.stringify(useGemini));
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [useGemini]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('myjourney_gemini_api_key', geminiApiKey);
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [geminiApiKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('myjourney_gemini_model', geminiModel);
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [geminiModel]);
 
   const handlePhotoUpload = (angle: 'front' | 'side' | 'back', event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -165,20 +224,107 @@ export const BodyComp: React.FC = () => {
     setGeneratingKey(key);
     
     try {
-      // Encode prompt for pollinations URL
-      const encodedPrompt = encodeURIComponent(promptText);
-      const url = `https://gen.pollinations.ai/image/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${Math.floor(Math.random() * 100000)}`;
-      
-      // Simulate real-time pipeline connection/fetching with a 2-second delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Set the generated URL
-      const updated = { ...aiPreviews, [key]: url };
-      setAiPreviews(updated);
-      localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect to the image generation pipeline. Check your internet connection.");
+      if (useGemini) {
+        // --- Gemini 3.1 Flash Image (Nano Banana 2) API call ---
+        if (!geminiApiKey.trim()) {
+          throw new Error("Gemini API key is required. Click the Settings gear icon above to configure it.");
+        }
+        
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey.trim()}`;
+        
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: promptText
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseModalities: ["IMAGE"]
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          let errorMsg = `Gemini API returned status: ${response.status}`;
+          try {
+            const errJson = await response.json();
+            if (errJson.error?.message) {
+              errorMsg += ` - ${errJson.error.message}`;
+            }
+          } catch {}
+          throw new Error(errorMsg);
+        }
+        
+        const json = await response.json();
+        const parts = json.candidates?.[0]?.content?.parts;
+        if (!parts || parts.length === 0) {
+          throw new Error("Gemini API response did not contain any generated content.");
+        }
+        
+        const imagePart = parts.find((p: any) => p.inlineData || p.inline_data);
+        if (!imagePart) {
+          const textPart = parts.find((p: any) => p.text);
+          if (textPart) {
+            throw new Error(`Gemini API returned text instead of image: ${textPart.text}`);
+          }
+          throw new Error("No image data found in Gemini API response.");
+        }
+        
+        const inlineData = imagePart.inlineData || imagePart.inline_data;
+        const data = inlineData?.data;
+        const mimeType = inlineData?.mimeType || inlineData?.mime_type || 'image/png';
+        
+        if (!data) {
+          throw new Error("No base64 data found in Gemini image response part.");
+        }
+        
+        const base64Data = `data:${mimeType};base64,${data}`;
+        
+        // Cache the preview dataURL
+        const updated = { ...aiPreviews, [key]: base64Data };
+        setAiPreviews(updated);
+        localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
+      } else {
+        // --- Pollinations sequential fetch/data URL conversion ---
+        const encodedPrompt = encodeURIComponent(promptText);
+        const seed = Math.floor(Math.random() * 1000000);
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${seed}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          if (response.status === 402) {
+            throw new Error("Queue Full / Payment Required. Try again in a few seconds or use a Gemini API key.");
+          }
+          throw new Error(`Pollinations API returned status: ${response.status} (${response.statusText})`);
+        }
+        
+        const blob = await response.blob();
+        
+        // Convert blob to base64 Data URL
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read image blob data."));
+          reader.readAsDataURL(blob);
+        });
+        
+        // Cache the preview dataURL
+        const updated = { ...aiPreviews, [key]: base64Data };
+        setAiPreviews(updated);
+        localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
+      }
+    } catch (err: any) {
+      console.error("AI Generation failed:", err);
+      alert(err.message || "Failed to connect to the image generation pipeline. Check your internet connection.");
     } finally {
       setGeneratingKey(null);
     }
@@ -468,9 +614,187 @@ export const BodyComp: React.FC = () => {
       </div>
 
       {/* AI Transformation Preview Pipeline Cards */}
-      <h3 className="heading-section" style={{ marginBottom: '16px', fontSize: '1.1rem' }}>
-        AI Avatar Pipeline Previews
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 className="heading-section" style={{ margin: 0, fontSize: '1.1rem' }}>
+          AI Avatar Pipeline Previews
+        </h3>
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '50%',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: showSettings ? 'var(--accent-orange)' : 'var(--text-secondary)',
+            transition: 'all 0.2s',
+          }}
+          title="AI Pipeline Settings"
+        >
+          <Settings size={18} />
+        </button>
+      </div>
+
+      {showSettings && (
+        <div className="journey-card anim-fade-up" style={{
+          background: 'linear-gradient(to right, rgba(28,28,30,0.95), rgba(20,20,22,0.98))',
+          border: '1px solid var(--border-color)',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
+            <Settings size={16} color="var(--accent-orange)" />
+            <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#fff' }}>
+              AI Generation Settings
+            </h4>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Selection */}
+            <div>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                Choose Generation Engine:
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setUseGemini(false)}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: useGemini ? '1px solid var(--border-color)' : '1px solid var(--accent-orange)',
+                    background: useGemini ? 'rgba(0,0,0,0.2)' : 'rgba(255, 94, 0, 0.05)',
+                    color: useGemini ? 'var(--text-secondary)' : '#fff',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Free Public API
+                  <span style={{ display: 'block', fontSize: '0.62rem', fontWeight: 400, color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Pollinations AI (No Key)
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseGemini(true)}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: useGemini ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)',
+                    background: useGemini ? 'rgba(255, 94, 0, 0.05)' : 'rgba(0,0,0,0.2)',
+                    color: useGemini ? '#fff' : 'var(--text-secondary)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Google Gemini API
+                  <span style={{ display: 'block', fontSize: '0.62rem', fontWeight: 400, color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Nano Banana 2 (Key Req.)
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {useGemini && (
+              <div className="anim-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* API Key */}
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                    Google AI Studio API Key:
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={geminiApiKey}
+                      onChange={(e) => setGeminiApiKey(e.target.value)}
+                      placeholder="Paste your AI Studio API key here"
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        border: '1px solid var(--border-color)',
+                        color: '#fff',
+                        padding: '10px 40px 10px 12px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        outline: 'none',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
+                      onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {showApiKey ? <Eye size={16} /> : <Lock size={16} />}
+                    </button>
+                  </div>
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Get a free API key from the{' '}
+                    <a
+                      href="https://aistudio.google.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--accent-orange)', textDecoration: 'underline' }}
+                    >
+                      Google AI Studio console
+                    </a>.
+                  </span>
+                </div>
+
+                {/* Model ID */}
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                    Model:
+                  </label>
+                  <select
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      border: '1px solid var(--border-color)',
+                      color: '#fff',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
+                    onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                  >
+                    <option value="gemini-3.1-flash-image">gemini-3.1-flash-image (Nano Banana 2 - Recommended)</option>
+                    <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
+                    <option value="gemini-2.5-flash-image">gemini-2.5-flash-image (Nano Banana 1)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={{
         display: 'flex',
