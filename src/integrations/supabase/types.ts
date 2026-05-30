@@ -14,7 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exercises: {
+        Row: {
+          completed: number
+          created_at: string
+          id: string
+          name: string
+          target: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: number
+          created_at?: string
+          id: string
+          name: string
+          target?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: number
+          created_at?: string
+          id?: string
+          name?: string
+          target?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habits: {
+        Row: {
+          avoid_junk: boolean
+          created_at: string
+          date: string
+          eat_clean: boolean
+          hydration: boolean
+          id: string
+          sleep_on_time: boolean
+          updated_at: string
+          user_id: string
+          wake_up: boolean
+        }
+        Insert: {
+          avoid_junk?: boolean
+          created_at?: string
+          date: string
+          eat_clean?: boolean
+          hydration?: boolean
+          id?: string
+          sleep_on_time?: boolean
+          updated_at?: string
+          user_id: string
+          wake_up?: boolean
+        }
+        Update: {
+          avoid_junk?: boolean
+          created_at?: string
+          date?: string
+          eat_clean?: boolean
+          hydration?: boolean
+          id?: string
+          sleep_on_time?: boolean
+          updated_at?: string
+          user_id?: string
+          wake_up?: boolean
+        }
+        Relationships: []
+      }
+      meals: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          image: string | null
+          log: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          image?: string | null
+          log?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          image?: string | null
+          log?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          created_at: string
+          current_weight: number | null
+          fat_percent: number | null
+          goal_weight: number | null
+          height: number | null
+          id: string
+          muscle_mass: number | null
+          name: string | null
+          sleep_duration: number | null
+          sleep_time: string | null
+          start_date: string | null
+          start_weight: number | null
+          steps: number | null
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          current_weight?: number | null
+          fat_percent?: number | null
+          goal_weight?: number | null
+          height?: number | null
+          id: string
+          muscle_mass?: number | null
+          name?: string | null
+          sleep_duration?: number | null
+          sleep_time?: string | null
+          start_date?: string | null
+          start_weight?: number | null
+          steps?: number | null
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          current_weight?: number | null
+          fat_percent?: number | null
+          goal_weight?: number | null
+          height?: number | null
+          id?: string
+          muscle_mass?: number | null
+          name?: string | null
+          sleep_duration?: number | null
+          sleep_time?: string | null
+          start_date?: string | null
+          start_weight?: number | null
+          steps?: number | null
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      todos: {
+        Row: {
+          completed: boolean
+          created_at: string
+          date: string
+          id: string
+          text: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          date: string
+          id: string
+          text: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          date?: string
+          id?: string
+          text?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
