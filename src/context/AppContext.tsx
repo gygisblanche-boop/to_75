@@ -166,19 +166,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDemoMode, setIsDemoMode] = useState(!isSupabaseEnabled);
 
   // Core User states (synced either from Supabase or localStorage fallback)
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [xp, setXp] = useState<number>(0);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [habits, setHabits] = useState<HabitsRecord>({});
-  const [meals, setMeals] = useState<MealsRecord>({});
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [bodyComp, setBodyComp] = useState<BodyComp>({
-    weight: 85,
-    fatPercent: 22,
-    muscleMass: 55,
-    steps: 3500,
-    sleepDuration: 6.5,
-    sleepTime: '23:30',
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.USER);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [xp, setXp] = useState<number>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.XP);
+      return cached ? parseInt(cached, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [exercises, setExercises] = useState<Exercise[]>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.EXERCISES);
+      return cached ? JSON.parse(cached) : [
+        { id: '1', name: 'Pushups', target: 50, completed: 0 },
+        { id: '2', name: 'Pullups', target: 20, completed: 0 }
+      ];
+    } catch {
+      return [
+        { id: '1', name: 'Pushups', target: 50, completed: 0 },
+        { id: '2', name: 'Pullups', target: 20, completed: 0 }
+      ];
+    }
+  });
+  const [habits, setHabits] = useState<HabitsRecord>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.HABITS);
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [meals, setMeals] = useState<MealsRecord>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.MEALS);
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [todos, setTodos] = useState<Todo[]>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.TODOS);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [bodyComp, setBodyComp] = useState<BodyComp>(() => {
+    try {
+      const cached = safeStorage.getItem(STORAGE_KEYS.BODY_COMP);
+      return cached ? JSON.parse(cached) : {
+        weight: 85,
+        fatPercent: 22,
+        muscleMass: 55,
+        steps: 3500,
+        sleepDuration: 6.5,
+        sleepTime: '23:30',
+      };
+    } catch {
+      return {
+        weight: 85,
+        fatPercent: 22,
+        muscleMass: 55,
+        steps: 3500,
+        sleepDuration: 6.5,
+        sleepTime: '23:30',
+      };
+    }
   });
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'connected'>('idle');
@@ -265,7 +327,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           sleepTime: profileData.sleep_time || '23:30',
         });
       } else {
-        setUser(null); // Directs to onboarding modal
+        // If there's no profile in the cloud, check if there is a local user cache from this browser
+        const cachedUser = safeStorage.getItem(STORAGE_KEYS.USER);
+        if (cachedUser) {
+          const parsedUser = JSON.parse(cachedUser);
+          setUser(parsedUser);
+          // Auto-upsert to Supabase
+          try {
+            await supabase!
+              .from('profiles')
+              .upsert({
+                id: uid,
+                name: parsedUser.name,
+                age: parsedUser.age,
+                height: parsedUser.height,
+                start_weight: parsedUser.startWeight,
+                current_weight: parsedUser.currentWeight,
+                goal_weight: parsedUser.goalWeight,
+                start_date: parsedUser.startDate,
+                xp: xp,
+                level: level,
+                fat_percent: bodyComp.fatPercent,
+                muscle_mass: bodyComp.muscleMass,
+                steps: bodyComp.steps,
+                sleep_duration: bodyComp.sleepDuration,
+                sleep_time: bodyComp.sleepTime,
+              });
+          } catch (e) {
+            console.error("Auto upsert on login failed:", e);
+          }
+        } else {
+          setUser(null); // Directs to onboarding modal
+        }
       }
 
       // B. Load Exercises
@@ -348,81 +441,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isCloudConnected, authUser]);
 
   // ----------------------------------------------------
-  // 3. Local Storage Sync (Demo Mode Engine)
+  // 3. Local Storage Sync (Local Cache Engine)
   // ----------------------------------------------------
   useEffect(() => {
-    if (!isDemoMode) return;
-
-    const cachedUser = safeStorage.getItem(STORAGE_KEYS.USER);
-    setUser(cachedUser ? JSON.parse(cachedUser) : null);
-
-    const cachedXp = safeStorage.getItem(STORAGE_KEYS.XP);
-    setXp(cachedXp ? parseInt(cachedXp, 10) : 0);
-
-    const cachedExercises = safeStorage.getItem(STORAGE_KEYS.EXERCISES);
-    setExercises(cachedExercises ? JSON.parse(cachedExercises) : [
-      { id: '1', name: 'Pushups', target: 50, completed: 0 },
-      { id: '2', name: 'Pullups', target: 20, completed: 0 }
-    ]);
-
-    const cachedHabits = safeStorage.getItem(STORAGE_KEYS.HABITS);
-    setHabits(cachedHabits ? JSON.parse(cachedHabits) : {});
-
-    const cachedMeals = safeStorage.getItem(STORAGE_KEYS.MEALS);
-    setMeals(cachedMeals ? JSON.parse(cachedMeals) : {});
-
-    const cachedTodos = safeStorage.getItem(STORAGE_KEYS.TODOS);
-    setTodos(cachedTodos ? JSON.parse(cachedTodos) : []);
-
-    const cachedBody = safeStorage.getItem(STORAGE_KEYS.BODY_COMP);
-    setBodyComp(cachedBody ? JSON.parse(cachedBody) : {
-      weight: 85,
-      fatPercent: 22,
-      muscleMass: 55,
-      steps: 3500,
-      sleepDuration: 6.5,
-      sleepTime: '23:30',
-    });
-  }, [isDemoMode]);
-
-  useEffect(() => {
-    if (!isDemoMode) return;
     if (user) {
       safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
     } else {
       safeStorage.removeItem(STORAGE_KEYS.USER);
     }
-  }, [isDemoMode, user]);
+  }, [user]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.XP, String(xp));
-  }, [isDemoMode, xp]);
+  }, [xp]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(exercises));
-  }, [isDemoMode, exercises]);
+  }, [exercises]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
-  }, [isDemoMode, habits]);
+  }, [habits]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(meals));
-  }, [isDemoMode, meals]);
+  }, [meals]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.TODOS, JSON.stringify(todos));
-  }, [isDemoMode, todos]);
+  }, [todos]);
 
   useEffect(() => {
-    if (!isDemoMode) return;
     safeStorage.setItem(STORAGE_KEYS.BODY_COMP, JSON.stringify(bodyComp));
-  }, [isDemoMode, bodyComp]);
+  }, [bodyComp]);
 
   // ----------------------------------------------------
   // 4. Carryover To-Do Logic
