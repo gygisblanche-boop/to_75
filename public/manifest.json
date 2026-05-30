@@ -1,18 +1,17 @@
 {
-  "name": "MyJourney — Fitness & Habits",
   "short_name": "MyJourney",
-  "description": "Premium fitness and habit tracking",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
-  "orientation": "portrait",
+  "name": "MyJourney - Premium Fitness & Habit Tracker",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
+      "src": "/logo.svg",
       "type": "image/svg+xml",
+      "sizes": "any",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "start_url": "/",
+  "background_color": "#121212",
+  "theme_color": "#ff5e00",
+  "display": "standalone",
+  "orientation": "portrait"
 }
