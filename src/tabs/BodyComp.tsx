@@ -167,7 +167,7 @@ export const BodyComp: React.FC = () => {
     try {
       // Encode prompt for pollinations URL
       const encodedPrompt = encodeURIComponent(promptText);
-      const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${Math.floor(Math.random() * 100000)}`;
+      const url = `https://gen.pollinations.ai/image/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${Math.floor(Math.random() * 100000)}`;
       
       // Simulate real-time pipeline connection/fetching with a 2-second delay
       await new Promise(resolve => setTimeout(resolve, 2000));
