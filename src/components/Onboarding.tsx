@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import type { UserProfile } from '@/context/AppContext';
-import { Zap, Award } from 'lucide-react';
+import { Zap, Award, LogOut } from 'lucide-react';
 
 export const Onboarding: React.FC = () => {
-  const { updateUser, getTodayDateString } = useApp();
+  const { updateUser, getTodayDateString, logout, authUser, isDemoMode } = useApp();
   
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -206,6 +206,28 @@ export const Onboarding: React.FC = () => {
             <button type="submit" className="btn btn-primary" style={{ height: '50px' }}>
               Create Athlete Profile
             </button>
+
+            {(authUser || isDemoMode) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(authUser ? 'Sign out and return to the login screen?' : 'Exit Demo Mode and return to the login screen?')) {
+                    logout();
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ 
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <LogOut size={14} />
+                {authUser ? 'Sign Out / Switch Account' : 'Exit Demo Mode'}
+              </button>
+            )}
             
             <div style={{
               display: 'flex',

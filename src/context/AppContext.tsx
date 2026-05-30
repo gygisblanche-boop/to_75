@@ -202,6 +202,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsDemoMode(false);
       }
       setAuthLoading(false);
+    }).catch((err: any) => {
+      console.error("Supabase getSession failed, falling back to offline:", err);
+      setAuthLoading(false);
     });
 
     // Listen to Auth State Changes
