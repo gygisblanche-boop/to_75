@@ -12,9 +12,12 @@ import {
   Camera, 
   Upload, 
   Trash2, 
-  Image,
+  Sparkles,
   Eye,
-  Sparkles
+  UserCheck,
+  TrendingDown,
+  ChevronRight,
+  Maximize2
 } from 'lucide-react';
 
 export const BodyComp: React.FC = () => {
@@ -22,7 +25,7 @@ export const BodyComp: React.FC = () => {
   const [activeManualMetric, setActiveManualMetric] = useState<string | null>(null);
   const [manualValue, setManualValue] = useState('');
   
-  // Local storage for body photos
+  // Local storage for body photos (uploaded by user)
   const [photos, setPhotos] = useState<{ front?: string; side?: string; back?: string }>(() => {
     try {
       const cached = localStorage.getItem('myjourney_body_photos_v1');
@@ -32,13 +35,25 @@ export const BodyComp: React.FC = () => {
     }
   });
 
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  // Local storage for generated AI previews
+  const [aiPreviews, setAiPreviews] = useState<Record<string, string>>(() => {
+    try {
+      const cached = localStorage.getItem('myjourney_ai_previews_v1');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [generatingKey, setGeneratingKey] = useState<string | null>(null);
+  const [genderModel, setGenderModel] = useState<'male' | 'female'>('male');
+  const [activeZoomUrl, setActiveZoomUrl] = useState<string | null>(null);
+  const [activeZoomLabel, setActiveZoomLabel] = useState<string>('');
 
   const handlePhotoUpload = (angle: 'front' | 'side' | 'back', event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Limit size to ~1.5MB to avoid localStorage quota exceed issues
     if (file.size > 2 * 1024 * 1024) {
       alert("File is too large! Please upload an image smaller than 2MB.");
       return;
@@ -126,22 +141,105 @@ export const BodyComp: React.FC = () => {
     if (activeManualMetric === 'steps') updateBodyCompDirect({ steps: Math.floor(val) });
     if (activeManualMetric === 'sleep') updateBodyCompDirect({ sleepDuration: val });
 
+    // Reset generated previews when weight or body fat changes so they can be regenerated
+    setAiPreviews({});
+    localStorage.removeItem('myjourney_ai_previews_v1');
+
     setManualValue('');
     setActiveManualMetric(null);
   };
 
   // Calculations for simulated AI visualization values
-  const hasPhotos = photos.front || photos.side || photos.back;
   const userWeight = user?.currentWeight || bodyComp.weight;
   const userFat = bodyComp.fatPercent;
-  const userAge = user?.age || 30;
-  const userHeight = user?.height || 175;
+  const userAge = user?.age || 34;
+  const userHeight = user?.height || 178;
 
   const targetBf = 12;
   const ffm = userWeight * (1 - userFat / 100);
   const targetWeight = ffm / (1 - targetBf / 100);
   const milestoneWeight = userWeight - 5;
   const milestoneBf = userFat - ((userFat - targetBf) * (5 / (userWeight - targetWeight)));
+
+  const handleGenerateAI = async (key: 'goal' | 'm_front' | 'm_side' | 'm_back', promptText: string) => {
+    setGeneratingKey(key);
+    
+    try {
+      // Encode prompt for pollinations URL
+      const encodedPrompt = encodeURIComponent(promptText);
+      const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${Math.floor(Math.random() * 100000)}`;
+      
+      // Simulate real-time pipeline connection/fetching with a 2-second delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Set the generated URL
+      const updated = { ...aiPreviews, [key]: url };
+      setAiPreviews(updated);
+      localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to the image generation pipeline. Check your internet connection.");
+    } finally {
+      setGeneratingKey(null);
+    }
+  };
+
+  // Prompts Builder based on active state parameters
+  const getPrompt = (type: 'goal' | 'm_front' | 'm_side' | 'm_back') => {
+    const genderNoun = genderModel === 'male' ? 'male fitness model' : 'female fitness model';
+    const bottomNoun = genderModel === 'male' ? 'dark athletic shorts' : 'dark athletic sports bra and shorts';
+    const muscularity = genderModel === 'male' ? 'defined abdominal muscles, a flat stomach, and sculpted shoulder and arm muscle definition' : 'toned core, flat stomach, and sculpted shoulder and leg definition';
+    
+    switch (type) {
+      case 'goal':
+        return `A realistic, high-detail full-body studio photograph of a ${userAge}-year-old ${genderNoun}, ${userHeight} cm tall, weighing ${targetWeight.toFixed(1)} kg. Visibly lean and athletic physique with 12% body fat, featuring a ${muscularity}. Standing in a neutral, relaxed posture, front-view perspective. Wearing simple ${bottomNoun}. Natural skin texture, soft professional studio lighting, neutral clean gray background, photorealistic.`;
+      case 'm_front':
+        return `A realistic, high-detail full-body studio photograph of a ${userAge}-year-old ${genderNoun}, ${userHeight} cm tall, weighing ${milestoneWeight.toFixed(1)} kg. Moderately lean and toned physique with ${milestoneBf.toFixed(1)}% body fat, showcasing a flatter stomach and early core muscle definition. Standing in a neutral, relaxed posture, front-view perspective. Wearing simple ${bottomNoun}. Natural skin texture, soft professional studio lighting, neutral clean gray background, photorealistic.`;
+      case 'm_side':
+        return `A realistic, high-detail full-body studio photograph of a ${userAge}-year-old ${genderNoun}, ${userHeight} cm tall, weighing ${milestoneWeight.toFixed(1)} kg, captured from a 45-degree side angle. Moderately lean and toned physique with ${milestoneBf.toFixed(1)}% body fat, showing a flatter midsection, straight posture, and defined oblique lines. Wearing simple ${bottomNoun}. Natural skin texture, soft professional studio lighting, neutral clean gray background, photorealistic.`;
+      case 'm_back':
+        return `A realistic, high-detail full-body studio photograph of a ${userAge}-year-old ${genderNoun} from a rear-view perspective, ${userHeight} cm tall, weighing ${milestoneWeight.toFixed(1)} kg. Moderately toned back with ${milestoneBf.toFixed(1)}% body fat, showing visible shoulder blade and latissimus muscle definition. Wearing simple ${bottomNoun}. Natural skin texture, soft professional studio lighting, neutral clean gray background, photorealistic.`;
+    }
+  };
+
+  const previewCards = [
+    {
+      key: 'goal' as const,
+      label: `YOUR GOAL — ${targetWeight.toFixed(1)} kg`,
+      bf: '12% Body Fat',
+      type: 'Target',
+      color: 'var(--accent-orange)',
+      prompt: getPrompt('goal'),
+      uploadedPhoto: photos.front
+    },
+    {
+      key: 'm_front' as const,
+      label: `MILESTONE — ${milestoneWeight.toFixed(1)} kg`,
+      bf: `${milestoneBf.toFixed(1)}% Body Fat`,
+      type: 'Front View',
+      color: 'var(--accent-purple)',
+      prompt: getPrompt('m_front'),
+      uploadedPhoto: photos.front
+    },
+    {
+      key: 'm_side' as const,
+      label: `MILESTONE — ${milestoneWeight.toFixed(1)} kg`,
+      bf: `${milestoneBf.toFixed(1)}% Body Fat`,
+      type: 'Side View',
+      color: '#bf5af2',
+      prompt: getPrompt('m_side'),
+      uploadedPhoto: photos.side
+    },
+    {
+      key: 'm_back' as const,
+      label: `MILESTONE — ${milestoneWeight.toFixed(1)} kg`,
+      bf: `${milestoneBf.toFixed(1)}% Body Fat`,
+      type: 'Back View',
+      color: '#0a84ff',
+      prompt: getPrompt('m_back'),
+      uploadedPhoto: photos.back
+    }
+  ];
 
   return (
     <div className="anim-fade-up">
@@ -236,27 +334,6 @@ export const BodyComp: React.FC = () => {
               Upload views to activate body shape predictive AI.
             </p>
           </div>
-          {hasPhotos && (
-            <button
-              onClick={() => setIsPreviewOpen(true)}
-              style={{
-                background: 'rgba(255, 94, 0, 0.1)',
-                border: '1px solid var(--accent-orange)',
-                borderRadius: '8px',
-                color: 'var(--accent-orange)',
-                fontSize: '0.74rem',
-                fontWeight: 700,
-                padding: '6px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Eye size={12} /> View Prompts
-            </button>
-          )}
         </div>
 
         {/* 3-Column Upload Grid */}
@@ -388,6 +465,283 @@ export const BodyComp: React.FC = () => {
             );
           })}
         </div>
+      </div>
+
+      {/* AI Transformation Preview Pipeline Cards */}
+      <h3 className="heading-section" style={{ marginBottom: '16px', fontSize: '1.1rem' }}>
+        AI Avatar Pipeline Previews
+      </h3>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '12px',
+        padding: '12px 18px',
+        marginBottom: '16px'
+      }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+          Visualization Model Gender:
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            onClick={() => setGenderModel('male')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              background: genderModel === 'male' ? 'var(--accent-orange)' : 'rgba(255,255,255,0.05)',
+              color: '#fff',
+              transition: 'all 0.2s',
+            }}
+          >
+            Male Profile
+          </button>
+          <button
+            onClick={() => setGenderModel('female')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              background: genderModel === 'female' ? 'var(--accent-orange)' : 'rgba(255,255,255,0.05)',
+              color: '#fff',
+              transition: 'all 0.2s',
+            }}
+          >
+            Female Profile
+          </button>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '16px',
+        marginBottom: '32px'
+      }}>
+        {previewCards.map((card) => {
+          const aiPhoto = aiPreviews[card.key];
+          const isGenerating = generatingKey === card.key;
+          
+          return (
+            <div key={card.key} className="journey-card" style={{
+              margin: 0,
+              padding: '20px',
+              border: `1px solid ${aiPhoto ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`
+            }}>
+              {/* Card Title info bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div>
+                  <span style={{
+                    fontSize: '0.64rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    color: card.color,
+                    letterSpacing: '0.06em',
+                    display: 'block'
+                  }}>
+                    {card.type}
+                  </span>
+                  <h4 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#fff', margin: '2px 0 0 0' }}>
+                    {card.label}
+                  </h4>
+                </div>
+                <span style={{
+                  fontSize: '0.74rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: 600,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  padding: '4px 10px',
+                  borderRadius: '16px'
+                }}>
+                  {card.bf}
+                </span>
+              </div>
+
+              {/* Side-by-side or Preview container */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '12px',
+                minHeight: '180px'
+              }}>
+                {/* Left: User's Uploaded Checkpoint photo */}
+                <div style={{
+                  borderRadius: '10px',
+                  background: 'rgba(0,0,0,0.2)',
+                  border: '1px dashed rgba(255,255,255,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative'
+                }}>
+                  {card.uploadedPhoto ? (
+                    <img 
+                      src={card.uploadedPhoto} 
+                      alt="Uploaded view" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      <Camera size={20} color="var(--text-muted)" style={{ margin: '0 auto 8px auto' }} />
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>
+                        No photo uploaded
+                      </span>
+                    </div>
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    left: '8px',
+                    background: 'rgba(0,0,0,0.6)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.58rem',
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    Before (Now)
+                  </div>
+                </div>
+
+                {/* Right: AI-Generated Target / Milestone photo */}
+                <div style={{
+                  borderRadius: '10px',
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative'
+                }}>
+                  {isGenerating ? (
+                    /* Generating state with spinning animation */
+                    <div style={{ padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <RefreshCw size={24} color="var(--accent-orange)" style={{ animation: 'spin-slow 1.5s linear infinite' }} />
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent-orange)', fontWeight: 600 }}>
+                        Running Pipeline...
+                      </span>
+                    </div>
+                  ) : aiPhoto ? (
+                    /* Render generated photo */
+                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      <img 
+                        src={aiPhoto} 
+                        alt="AI avatar visualization" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <button
+                        onClick={() => {
+                          setActiveZoomUrl(aiPhoto);
+                          setActiveZoomLabel(card.label);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(0,0,0,0.6)',
+                          border: 'none',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                        }}
+                        title="Maximize View"
+                      >
+                        <Maximize2 size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Trigger generation */
+                    <div style={{ padding: '20px', textAlign: 'center', width: '100%' }}>
+                      <button
+                        onClick={() => handleGenerateAI(card.key, card.prompt)}
+                        style={{
+                          background: 'rgba(255, 94, 0, 0.1)',
+                          border: '1px solid var(--accent-orange)',
+                          borderRadius: '8px',
+                          color: 'var(--accent-orange)',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '8px 14px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 94, 0, 0.18)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 94, 0, 0.1)';
+                        }}
+                      >
+                        <Sparkles size={12} />
+                        Run AI Preview
+                      </button>
+                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                        Compute transformation avatar
+                      </span>
+                    </div>
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    left: '8px',
+                    background: card.color,
+                    color: '#fff',
+                    fontSize: '0.58rem',
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    After (AI Proj.)
+                  </div>
+                </div>
+              </div>
+
+              {/* Collapsible Prompt display to inspect what is sent */}
+              <details style={{ marginTop: '12px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                <summary style={{ cursor: 'pointer', outline: 'none', fontWeight: 600 }}>
+                  Show API Prompt Payload
+                </summary>
+                <div style={{
+                  background: 'rgba(0,0,0,0.2)',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  marginTop: '6px',
+                  fontFamily: 'monospace',
+                  lineHeight: 1.4,
+                  wordBreak: 'break-word',
+                  color: 'var(--text-secondary)'
+                }}>
+                  {card.prompt}
+                </div>
+              </details>
+            </div>
+          );
+        })}
       </div>
 
       {/* Metrics Cards List */}
@@ -543,94 +897,51 @@ export const BodyComp: React.FC = () => {
         </div>
       )}
 
-      {/* AI Transformation Preview Modal */}
-      {isPreviewOpen && (
+      {/* Zoom / Lightbox Modal for AI image */}
+      {activeZoomUrl && (
         <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.85)',
-          zIndex: 1000,
+          backgroundColor: 'rgba(0,0,0,0.95)',
+          zIndex: 2000,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '16px',
-        }} onClick={() => setIsPreviewOpen(false)}>
-          <div className="journey-card" style={{
+          padding: '20px'
+        }} onClick={() => setActiveZoomUrl(null)}>
+          <div style={{
+            maxWidth: '480px',
             width: '100%',
-            maxWidth: '440px',
-            backgroundColor: 'var(--bg-panel)',
-            maxHeight: '85vh',
-            overflowY: 'auto',
-            padding: '24px',
-            margin: 0,
-            border: '1px solid var(--accent-orange)'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div style={{
-                backgroundColor: 'rgba(255, 94, 0, 0.1)',
-                padding: '6px',
-                borderRadius: '8px',
-                color: 'var(--accent-orange)'
-              }}>
-                <Sparkles size={18} />
-              </div>
-              <h3 style={{
-                fontSize: '1rem',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-display)',
-                margin: 0
-              }}>
-                AI Transformation Pipeline
-              </h3>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              <p>
-                Based on your uploaded photos and active biometrics, here is your generated **Stable Diffusion / Imagen** visualization payload.
+            <img 
+              src={activeZoomUrl} 
+              alt="Zoomed preview" 
+              style={{
+                width: '100%',
+                aspectRatio: '1',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: 'var(--shadow-lg)'
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#fff' }}>
+              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{activeZoomLabel}</h4>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                Double click to save or share image
               </p>
-
-              {/* Goal Prompts Info */}
-              <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.04)',
-                borderRadius: '10px',
-                padding: '12px'
-              }}>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
-                  Target Goal ({targetWeight.toFixed(1)} kg | 12% Body Fat)
-                </strong>
-                <code style={{ fontSize: '0.72rem', color: 'var(--accent-orange)', display: 'block', wordBreak: 'break-word', userSelect: 'all', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-                  A realistic, high-detail full-body studio photograph of a {userAge}-year-old male, {userHeight} cm tall, weighing {targetWeight.toFixed(1)} kg. He has a visibly lean, athletic physique with 12% body fat, defined abdominal muscles, and a flat stomach...
-                </code>
-              </div>
-
-              {/* Milestone Prompts Info */}
-              <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.04)',
-                borderRadius: '10px',
-                padding: '12px'
-              }}>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
-                  Next Milestone Preview ({milestoneWeight.toFixed(1)} kg | {milestoneBf.toFixed(1)}% BF)
-                </strong>
-                <code style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', display: 'block', wordBreak: 'break-word', userSelect: 'all', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px', marginBottom: '6px' }}>
-                  [Front Angle] A realistic full-body studio photograph of a {userAge}-year-old male, {userHeight} cm tall, weighing {milestoneWeight.toFixed(1)} kg with {milestoneBf.toFixed(1)}% body fat...
-                </code>
-                <span style={{ fontSize: '0.68rem', fontStyle: 'italic', display: 'block' }}>
-                  (Includes Front, 45° Side, and Back views for the milestone checkpoint)
-                </span>
-              </div>
-
-              <button
-                onClick={() => setIsPreviewOpen(false)}
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '8px' }}
+              <button 
+                onClick={() => setActiveZoomUrl(null)}
+                className="btn btn-secondary"
+                style={{ width: 'auto', padding: '6px 16px', marginTop: '12px', fontSize: '0.76rem' }}
               >
-                Close Pipeline View
+                Close View
               </button>
             </div>
           </div>
