@@ -196,7 +196,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isSupabaseEnabled) return;
 
     // Check active session immediately on mount
-    supabase!.auth.getSession().then(({ data: { session } }) => {
+    supabase!.auth.getSession().then(({ data: { session } }: any) => {
       if (session) {
         setAuthUser(session.user);
         setIsDemoMode(false);
@@ -205,7 +205,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // Listen to Auth State Changes
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event: any, session: any) => {
       if (session) {
         setAuthUser(session.user);
         setIsDemoMode(false);
@@ -272,7 +272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .eq('user_id', uid);
 
       if (exercisesData && exercisesData.length > 0) {
-        const list: Exercise[] = exercisesData.map(e => ({
+        const list: Exercise[] = exercisesData.map((e: any) => ({
           id: e.id,
           name: e.name,
           target: e.target,
@@ -295,7 +295,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (habitsData) {
         const record: HabitsRecord = {};
-        habitsData.forEach(h => {
+        habitsData.forEach((h: any) => {
           record[h.date] = {
             wakeUp: h.wake_up,
             hydration: h.hydration,
@@ -315,7 +315,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (mealsData) {
         const record: MealsRecord = {};
-        mealsData.forEach(m => {
+        mealsData.forEach((m: any) => {
           record[m.date] = {
             log: m.log || '',
             image: m.image || undefined
@@ -331,7 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .eq('user_id', uid);
 
       if (todosData) {
-        const list: Todo[] = todosData.map(t => ({
+        const list: Todo[] = todosData.map((t: any) => ({
           id: t.id,
           text: t.text,
           completed: t.completed,
