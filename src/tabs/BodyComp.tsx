@@ -84,6 +84,7 @@ export const BodyComp: React.FC = () => {
 
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -369,7 +370,9 @@ export const BodyComp: React.FC = () => {
       }
     } catch (err: any) {
       console.error("AI Generation failed:", err);
-      alert(err.message || "Failed to connect to the image generation pipeline. Check your internet connection.");
+      const msg = err.message || "Failed to connect to the image generation pipeline. Check your internet connection.";
+      setGenerationError(msg);
+      setShowSettings(true); // auto-open settings so user can switch to Gemini or fix key
     } finally {
       setGeneratingKey(null);
     }
@@ -684,6 +687,55 @@ export const BodyComp: React.FC = () => {
         </button>
       </div>
 
+      {/* Error Banner */}
+      {generationError && (
+        <div className="anim-fade-up" style={{
+          backgroundColor: 'rgba(255, 59, 48, 0.08)',
+          border: '1px solid rgba(255, 59, 48, 0.4)',
+          borderRadius: '10px',
+          padding: '14px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start'
+        }}>
+          <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ff6b6b', marginBottom: '4px' }}>
+              Image Generation Failed
+            </div>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {generationError}
+            </div>
+            {!useGemini && (
+              <button
+                onClick={() => { setUseGemini(true); setShowSettings(true); setGenerationError(null); }}
+                style={{
+                  marginTop: '10px',
+                  padding: '7px 14px',
+                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                ✨ Switch to Gemini AI (Recommended)
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setGenerationError(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: 0 }}
+          >✕</button>
+        </div>
+      )}
+
       {showSettings && (
         <div className="journey-card anim-fade-up" style={{
           background: 'linear-gradient(to right, rgba(28,28,30,0.95), rgba(20,20,22,0.98))',
@@ -830,9 +882,10 @@ export const BodyComp: React.FC = () => {
                     onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
                     onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
                   >
-                    <option value="gemini-3.1-flash-image">gemini-3.1-flash-image (Nano Banana 2 - Recommended)</option>
-                    <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
-                    <option value="gemini-2.5-flash-image">gemini-2.5-flash-image (Nano Banana 1)</option>
+                    <option value="gemini-3.1-flash-image">gemini-3.1-flash-image — Nano Banana 2 (Fast)</option>
+                    <option value="gemini-3-pro-image">gemini-3-pro-image — Nano Banana Pro (Best Quality ⭐)</option>
+                    <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview (Preview)</option>
+                    <option value="gemini-2.5-flash-image">gemini-2.5-flash-image — Nano Banana 1</option>
                   </select>
                 </div>
               </div>
