@@ -294,19 +294,76 @@ export const BodyComp: React.FC = () => {
         setAiPreviews(updated);
         localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
       } else {
-        // --- Pollinations direct URL assignment ---
-        // Note: We assign the URL directly instead of doing fetch() because Pollinations AI blocks 
-        // fetch requests from other origins (like localhost) with a 403 Turnstile challenge.
-        // Direct <img> tag loads do not send the Origin header and are allowed.
+        // --- Pollinations: download image via Image element + Canvas → base64 DataURL ---
+        // We cannot use fetch() because Pollinations blocks cross-origin requests with 403.
+        // Instead we load it into an <img> element, draw to canvas, and export as base64.
+        // This bypasses CORS on the request side while giving us a stable base64 string.
         const encodedPrompt = encodeURIComponent(promptText);
         const seed = Math.floor(Math.random() * 1000000);
-        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&private=true&enhance=false&seed=${seed}`;
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&enhance=false&seed=${seed}`;
         
-        // Simulate a 2-second pipeline connection delay so the loader is visible
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const img = new Image();
+          // Do NOT set crossOrigin — we want the browser to load it without CORS preflight
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || 512;
+              canvas.height = img.naturalHeight || 512;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) { reject(new Error('Canvas context unavailable')); return; }
+              ctx.drawImage(img, 0, 0);
+              // toDataURL will throw a SecurityError if CORS tainting occurred.
+              // Without crossOrigin attribute, most CDN images don't taint the canvas.
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              if (!dataUrl || dataUrl === 'data:,') {
+                reject(new Error('Canvas export produced empty image'));
+              } else {
+                resolve(dataUrl);
+              }
+            } catch (canvasErr: any) {
+              // Canvas tainted — Pollinations blocked the export.
+              // Fall back to storing the URL directly as last resort.
+              console.warn('Canvas tainted by Pollinations CORS. Storing raw URL as fallback.', canvasErr);
+              resolve(url);
+            }
+          };
+          img.onerror = () => {
+            reject(new Error(
+              'Pollinations AI could not generate the image. This is a free public API with rate limits. ' +
+              'Please try again in a few seconds, or switch to Gemini AI in Settings for reliable results.'
+            ));
+          };
+          // Set a 60-second timeout for the image to load
+          const timeout = setTimeout(() => {
+            img.src = '';
+            reject(new Error('Pollinations AI timed out after 60 seconds. Try again or switch to Gemini AI.'));
+          }, 60000);
+          img.onload = function() {
+            clearTimeout(timeout);
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || 512;
+              canvas.height = img.naturalHeight || 512;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) { reject(new Error('Canvas context unavailable')); return; }
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              if (!dataUrl || dataUrl === 'data:,') {
+                reject(new Error('Canvas export produced empty image'));
+              } else {
+                resolve(dataUrl);
+              }
+            } catch (canvasErr: any) {
+              console.warn('Canvas tainted — storing URL as fallback:', canvasErr);
+              resolve(url);
+            }
+          };
+          img.src = url;
+        });
         
-        // Cache the preview URL
-        const updated = { ...aiPreviews, [key]: url };
+        // Cache the base64 (or fallback URL)
+        const updated = { ...aiPreviews, [key]: base64Data };
         setAiPreviews(updated);
         localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
       }
@@ -981,8 +1038,15 @@ export const BodyComp: React.FC = () => {
                         src={aiPhoto} 
                         alt="AI avatar visualization" 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          console.warn("AI preview image failed to load:", aiPhoto);
+                        onError={() => {
+                          // Auto-clear broken cached URL so user sees the retry button
+                          console.warn('AI preview image failed to load — clearing from cache:', aiPhoto.substring(0, 60));
+                          const updated = { ...aiPreviews };
+                          delete updated[card.key];
+                          setAiPreviews(updated);
+                          try {
+                            localStorage.setItem('myjourney_ai_previews_v1', JSON.stringify(updated));
+                          } catch {}
                         }}
                       />
                       {/* Delete / Regenerate Specific card */}
