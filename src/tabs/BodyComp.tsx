@@ -847,16 +847,50 @@ export const BodyComp: React.FC = () => {
                     </button>
                   </div>
                   <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Get a free API key from the{' '}
+                    Get your key at{' '}
                     <a
-                      href="https://aistudio.google.com/"
+                      href="https://aistudio.google.com/apikey"
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: 'var(--accent-orange)', textDecoration: 'underline' }}
                     >
-                      Google AI Studio console
-                    </a>.
+                      aistudio.google.com/apikey
+                    </a>
                   </span>
+                </div>
+
+                {/* Billing tier info card */}
+                <div style={{
+                  backgroundColor: 'rgba(255, 200, 0, 0.06)',
+                  border: '1px solid rgba(255, 200, 0, 0.25)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  fontSize: '0.73rem',
+                  lineHeight: 1.6,
+                  color: 'var(--text-secondary)'
+                }}>
+                  <div style={{ fontWeight: 700, color: '#ffd60a', marginBottom: '4px' }}>⚡ Google AI Pro ≠ Gemini API billing</div>
+                  <div>Your <strong style={{ color: '#fff' }}>Google AI Pro / Google One</strong> subscription is for <strong style={{ color: '#fff' }}>gemini.google.com chat</strong> — it does <em>not</em> automatically give paid API access.</div>
+                  <div style={{ marginTop: '6px' }}>To unlock <strong style={{ color: '#fff' }}>Pro &amp; Flash models</strong> via API, enable billing separately:</div>
+                  <a
+                    href="https://aistudio.google.com/plan"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      marginTop: '8px',
+                      padding: '5px 10px',
+                      background: 'rgba(255,200,0,0.12)',
+                      border: '1px solid rgba(255,200,0,0.4)',
+                      borderRadius: '5px',
+                      color: '#ffd60a',
+                      textDecoration: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.72rem'
+                    }}
+                  >
+                    → Enable Pay-as-you-go at aistudio.google.com/plan
+                  </a>
                 </div>
 
                 {/* Model ID */}
@@ -882,11 +916,14 @@ export const BodyComp: React.FC = () => {
                     onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
                     onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
                   >
-                    <option value="gemini-3.1-flash-image">gemini-3.1-flash-image — Nano Banana 2 (Fast)</option>
-                    <option value="gemini-3-pro-image">gemini-3-pro-image — Nano Banana Pro (Best Quality ⭐)</option>
-                    <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview (Preview)</option>
-                    <option value="gemini-2.5-flash-image">gemini-2.5-flash-image — Nano Banana 1</option>
+                    <option value="gemini-3.1-flash-image">✅ gemini-3.1-flash-image — Nano Banana 2 (Free tier OK)</option>
+                    <option value="gemini-2.5-flash-image">✅ gemini-2.5-flash-image — Nano Banana 1 (Free tier OK)</option>
+                    <option value="gemini-3-pro-image">💳 gemini-3-pro-image — Nano Banana Pro (Billing required)</option>
+                    <option value="gemini-3.1-flash-image-preview">💳 gemini-3.1-flash-image-preview — Preview (Billing required)</option>
                   </select>
+                  <span style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    ✅ = works on free API tier &nbsp;|&nbsp; 💳 = requires billing enabled
+                  </span>
                 </div>
               </div>
             )}
